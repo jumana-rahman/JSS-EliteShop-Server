@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth.js";
+import { allowedOrigins } from "./config/origins.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
@@ -13,7 +14,7 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL,
+    origin: allowedOrigins,
     credentials: true,
   })
 );
