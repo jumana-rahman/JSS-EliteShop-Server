@@ -5,6 +5,10 @@ import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth.js";
 import { allowedOrigins } from "./config/origins.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
+import categoriesRouter from "./routes/categories.js";
+import productsRouter from "./routes/products.js";
+import adminRouter from "./routes/admin.js";
+import uploadsRouter from "./routes/uploads.js";
 
 const app = express();
 
@@ -36,6 +40,11 @@ app.get("/api/health", (req, res) => {
     message: "Backend is working",
   });
 });
+
+app.use("/api/categories", categoriesRouter);
+app.use("/api/products", productsRouter);
+app.use("/api/admin", adminRouter);
+app.use("/api/uploads", uploadsRouter);
 
 app.use(notFound);
 app.use(errorHandler);

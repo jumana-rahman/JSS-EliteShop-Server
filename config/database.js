@@ -26,6 +26,9 @@ export async function createIndexes() {
   await safeCreateIndex("products", { category_id: 1, subcategory_id: 1 });
   await safeCreateIndex("products", { is_featured: 1, is_trending: 1 });
   await safeCreateIndex("products", { price: 1 });
+  await safeCreateIndex("products", { stock: 1 });
+  await safeCreateIndex("products", { discount: -1 });
+  await safeCreateIndex("products", { brand: 1 });
   await safeCreateIndex("products", { created_at: -1 });
 
   await safeCreateIndex("carts", { user_id: 1 }, { unique: true });
