@@ -24,7 +24,6 @@ export function serializeCategory(category, subs = []) {
     name: category.name,
     label: category.name,
     slug: category.slug,
-    icon: category.icon || "📦",
     color: category.color || "#831843",
     description: category.description || "",
     subcategories: subs.map(serializeSubcategory),
@@ -74,7 +73,6 @@ export async function createCategory(data) {
   const doc = {
     name: data.name,
     slug,
-    icon: data.icon || "📦",
     color: data.color || "#831843",
     description: data.description || "",
     created_at: now,
