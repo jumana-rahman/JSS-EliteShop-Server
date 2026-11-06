@@ -84,7 +84,7 @@ async function loadCartItems(user_id) {
   }
 
   const productIds = cartItems
-    .map((item) => toObjectId(item.product_id))
+    .map((item) => toObjectId(String(item.product_id)))
     .filter(Boolean);
 
   const productDocs = await products()
