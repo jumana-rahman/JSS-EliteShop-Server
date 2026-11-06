@@ -16,7 +16,7 @@ const client = new MongoClient(process.env.MONGODB_URI);
 try {
   await client.connect();
 
-  const users = client.db().collection("user");
+  const users = client.db("jss_eliteshop").collection("user");
   const escaped = email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   const user = await users.findOne({

@@ -2,9 +2,10 @@ import "dotenv/config";
 import { MongoClient } from "mongodb";
 
 const client = new MongoClient(process.env.MONGODB_URI);
-const db = client.db();
+const DB_NAME = "jss_eliteshop";
+const db = client.db(DB_NAME);
 
-export { client, db };
+export { client, db, DB_NAME };
 
 async function safeCreateIndex(collection, spec, options = {}) {
   try {
