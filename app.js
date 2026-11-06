@@ -9,6 +9,8 @@ import categoriesRouter from "./routes/categories.js";
 import productsRouter from "./routes/products.js";
 import cartRouter from "./routes/cart.js";
 import wishlistRouter from "./routes/wishlist.js";
+import addressesRouter from "./routes/addresses.js";
+import ordersRouter from "./routes/orders.js";
 import adminRouter from "./routes/admin.js";
 import uploadsRouter from "./routes/uploads.js";
 
@@ -47,6 +49,8 @@ app.use("/api/categories", categoriesRouter);
 app.use("/api/products", productsRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/wishlist", wishlistRouter);
+app.use("/api/addresses", addressesRouter);
+app.use("/api/orders", ordersRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/uploads", uploadsRouter);
 

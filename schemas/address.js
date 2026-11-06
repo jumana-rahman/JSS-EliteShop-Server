@@ -1,0 +1,44 @@
+import { z } from "zod";
+
+const addressFields = {
+  name: z
+    .string({ error: "Full name is required." })
+    .trim()
+    .min(2, "Full name must be at least 2 characters.")
+    .max(80, "Full name is too long."),
+  phone: z
+    .string({ error: "Phone number is required." })
+    .trim()
+    .min(6, "Enter a valid phone number.")
+    .max(30, "Phone number is too long."),
+  addressLine: z
+    .string({ error: "Street address is required." })
+    .trim()
+    .min(5, "Street address is too short.")
+    .max(200, "Street address is too long."),
+  city: z
+    .string({ error: "City is required." })
+    .trim()
+    .min(2, "City must be at least 2 characters.")
+    .max(80, "City is too long."),
+  postalCode: z
+    .string({ error: "Postal code is required." })
+    .trim()
+    .min(3, "Enter a valid postal code.")
+    .max(20, "Postal code is too long."),
+  isDefault: z.boolean(),
+};
+
+export const addressCreateSchema = z.object({
+  ...addressFields,
+  isDefault: addressFields.isDefault.optional().default(false),
+});
+
+export const addressUpdateSchema = z.object({
+  name: addressFields.name.optional(),
+  phone: addressFields.phone.optional(),
+  addressLine: addressFields.addressLine.optional(),
+  city: addressFields.city.optional(),
+  postalCode: addressFields.postalCode.optional(),
+  isDefault: addressFields.isDefault.optional(),
+});
