@@ -262,6 +262,36 @@ export async function findProduct(idOrSlug, { incrementView = false } = {}) {
   return serializeProduct(product, categoryMap, subcategoryMap);
 }
 
+export async function findProductsByIds(ids = []) {
+  const seen = new Set();
+  const objectIds = [];
+
+  for (const id of ids) {
+    const objectId = toObjectId(String(id));
+    if (!objectId) continue;
+
+    const key = String(objectId);
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    objectIds.push(objectId);
+  }
+
+  if (objectIds.length === 0) return new Map();
+
+  const docs = await products()
+    .find({ _id: { $in: objectIds } })
+    .toArray();
+  const { categoryMap, subcategoryMap } = await loadMaps(docs);
+
+  return new Map(
+    docs.map((doc) => [
+      String(doc._id),
+      serializeProduct(doc, categoryMap, subcategoryMap),
+    ])
+  );
+}
+
 export async function findRelatedProducts(idOrSlug, limit = 4) {
   const objectId = toObjectId(idOrSlug);
   const product = await products().findOne(

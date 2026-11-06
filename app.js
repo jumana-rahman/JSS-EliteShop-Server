@@ -7,6 +7,8 @@ import { allowedOrigins } from "./config/origins.js";
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 import categoriesRouter from "./routes/categories.js";
 import productsRouter from "./routes/products.js";
+import cartRouter from "./routes/cart.js";
+import wishlistRouter from "./routes/wishlist.js";
 import adminRouter from "./routes/admin.js";
 import uploadsRouter from "./routes/uploads.js";
 
@@ -43,6 +45,8 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/categories", categoriesRouter);
 app.use("/api/products", productsRouter);
+app.use("/api/cart", cartRouter);
+app.use("/api/wishlist", wishlistRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/uploads", uploadsRouter);
 
