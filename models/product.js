@@ -285,7 +285,11 @@ export async function findRelatedProducts(idOrSlug, limit = 4) {
   );
 }
 
-async function resolveProductRelations(data, existing) {
+async function resolveProductRelations(
+  data,
+  existing,
+  { requireSubcategory = false } = {}
+) {
   const fields = {};
   const hasCategory = data.categoryId !== undefined;
   const hasSubcategory = data.subcategoryId !== undefined;
@@ -309,11 +313,13 @@ async function resolveProductRelations(data, existing) {
   let subcategoryObjectId = null;
 
   if (hasSubcategory) {
-    if (data.subcategoryId) {
-      subcategoryObjectId = toObjectId(data.subcategoryId);
-      if (!subcategoryObjectId) {
-        throw new ApiError(422, "Invalid subcategory.");
-      }
+    if (!data.subcategoryId) {
+      throw new ApiError(422, "A subcategory is required.");
+    }
+
+    subcategoryObjectId = toObjectId(data.subcategoryId);
+    if (!subcategoryObjectId) {
+      throw new ApiError(422, "Invalid subcategory.");
     }
   } else if (existing?.subcategory_id) {
     subcategoryObjectId = existing.subcategory_id;
@@ -336,6 +342,10 @@ async function resolveProductRelations(data, existing) {
 
     fields.subcategory_id = subcategoryObjectId;
   } else {
+    if (requireSubcategory) {
+      throw new ApiError(422, "A subcategory is required.");
+    }
+
     fields.subcategory_id = null;
   }
 
@@ -344,8 +354,14 @@ async function resolveProductRelations(data, existing) {
 }
 
 export async function createProduct(data) {
+  if (!Array.isArray(data.images) || data.images.length === 0) {
+    throw new ApiError(422, "At least one image is required.");
+  }
+
   const now = new Date();
-  const relations = await resolveProductRelations(data, null);
+  const relations = await resolveProductRelations(data, null, {
+    requireSubcategory: true,
+  });
   const originalPrice = data.originalPrice ?? data.price;
   const slug = await uniqueSlug(products(), slugify(data.name));
 
@@ -386,6 +402,13 @@ export async function updateProduct(id, data) {
 
   const existing = await products().findOne({ _id: objectId });
   if (!existing) throw new ApiError(404, "Product not found.");
+
+  if (
+    data.images !== undefined &&
+    (!Array.isArray(data.images) || data.images.length === 0)
+  ) {
+    throw new ApiError(422, "At least one image is required.");
+  }
 
   const patch = { updated_at: new Date() };
 

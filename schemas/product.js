@@ -3,19 +3,46 @@ import { z } from "zod";
 const objectId = z.string().regex(/^[a-f0-9]{24}$/i, "Invalid id");
 
 const productFields = {
-  name: z.string().trim().min(2, "Name must be at least 2 characters").max(200),
-  description: z
-    .string()
+  name: z
+    .string({ error: "Product name is required." })
     .trim()
-    .min(10, "Description must be at least 10 characters")
-    .max(5000),
+    .min(2, "Product name must be at least 2 characters.")
+    .max(200, "Product name must be 200 characters or fewer."),
+  description: z
+    .string({ error: "Description is required." })
+    .trim()
+    .min(1, "Description is required."),
   brand: z.string().trim().max(80),
-  categoryId: objectId,
-  subcategoryId: objectId.nullable(),
-  price: z.coerce.number().min(0).max(10000000),
+  categoryId: z
+    .string({ error: "Category is required." })
+    .min(1, "Category is required.")
+    .regex(/^[a-f0-9]{24}$/i, "Invalid category."),
+  subcategoryId: z
+    .string({ error: "Subcategory is required." })
+    .min(1, "Subcategory is required.")
+    .regex(/^[a-f0-9]{24}$/i, "Invalid subcategory."),
+  price: z.preprocess(
+    (value) => (value === "" || value === null ? undefined : value),
+    z.coerce
+      .number({ error: "Selling price is required." })
+      .min(0, "Selling price cannot be negative.")
+      .max(10000000, "Selling price is too high.")
+  ),
   originalPrice: z.coerce.number().min(0).max(10000000),
-  stock: z.coerce.number().int().min(0).max(1000000),
-  images: z.array(z.string().trim().min(1)).max(8),
+  stock: z.preprocess(
+    (value) => (value === "" || value === null ? undefined : value),
+    z.coerce
+      .number({ error: "Stock is required." })
+      .int("Stock must be a whole number.")
+      .min(0, "Stock cannot be negative.")
+      .max(1000000, "Stock is too high.")
+  ),
+  images: z
+    .array(z.string().trim().min(1, "Image URL cannot be empty."), {
+      error: "At least one image is required.",
+    })
+    .min(1, "At least one image is required.")
+    .max(8, "You can add up to 8 images."),
   specs: z.record(z.string(), z.string()),
   tags: z.array(z.string().trim().min(1)).max(20),
   isFeatured: z.boolean(),
@@ -26,9 +53,7 @@ const productFields = {
 export const productCreateSchema = z.object({
   ...productFields,
   brand: productFields.brand.optional().default(""),
-  subcategoryId: productFields.subcategoryId.optional().default(null),
   originalPrice: productFields.originalPrice.optional(),
-  images: productFields.images.optional().default([]),
   specs: productFields.specs.optional().default({}),
   tags: productFields.tags.optional().default([]),
   isFeatured: productFields.isFeatured.optional().default(false),
