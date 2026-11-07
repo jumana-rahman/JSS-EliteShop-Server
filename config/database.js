@@ -43,6 +43,7 @@ export async function createIndexes() {
 
   await safeCreateIndex("reviews", { user_id: 1, product_id: 1 }, { unique: true });
   await safeCreateIndex("reviews", { product_id: 1, created_at: -1 });
+  await safeCreateIndex("reviews", { order_id: 1 });
 
   await safeCreateIndex("coupons", { code: 1 }, { unique: true });
   await safeCreateIndex("coupon_usages", { coupon_id: 1, user_id: 1 });

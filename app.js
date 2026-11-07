@@ -13,6 +13,8 @@ import addressesRouter from "./routes/addresses.js";
 import ordersRouter from "./routes/orders.js";
 import adminRouter from "./routes/admin.js";
 import adminOrdersRouter from "./routes/adminOrders.js";
+import reviewsRouter from "./routes/reviews.js";
+import adminReviewsRouter from "./routes/adminReviews.js";
 import uploadsRouter from "./routes/uploads.js";
 
 const app = express();
@@ -52,7 +54,9 @@ app.use("/api/cart", cartRouter);
 app.use("/api/wishlist", wishlistRouter);
 app.use("/api/addresses", addressesRouter);
 app.use("/api/orders", ordersRouter);
+app.use("/api/reviews", reviewsRouter);
 app.use("/api/admin/orders", adminOrdersRouter);
+app.use("/api/admin/reviews", adminReviewsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/uploads", uploadsRouter);
 
