@@ -15,6 +15,9 @@ import adminRouter from "./routes/admin.js";
 import adminOrdersRouter from "./routes/adminOrders.js";
 import reviewsRouter from "./routes/reviews.js";
 import adminReviewsRouter from "./routes/adminReviews.js";
+import contactRouter from "./routes/contact.js";
+import adminContactRouter from "./routes/adminContact.js";
+import adminUsersRouter from "./routes/adminUsers.js";
 import uploadsRouter from "./routes/uploads.js";
 
 const app = express();
@@ -55,8 +58,11 @@ app.use("/api/wishlist", wishlistRouter);
 app.use("/api/addresses", addressesRouter);
 app.use("/api/orders", ordersRouter);
 app.use("/api/reviews", reviewsRouter);
+app.use("/api/contact", contactRouter);
 app.use("/api/admin/orders", adminOrdersRouter);
 app.use("/api/admin/reviews", adminReviewsRouter);
+app.use("/api/admin/users", adminUsersRouter);
+app.use("/api/admin/contact", adminContactRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/uploads", uploadsRouter);
 

@@ -15,6 +15,12 @@ export async function requireAuth(req, res, next) {
       return res.status(401).json({ message: "Please sign in to continue." });
     }
 
+    if (session.user?.is_active === false) {
+      return res.status(403).json({
+        message: "Your account has been deactivated. Please contact support.",
+      });
+    }
+
     req.user = session.user;
     req.session = session.session;
     next();
