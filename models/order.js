@@ -46,8 +46,45 @@ export function serializeOrder(doc) {
       postalCode: doc.address?.postal_code || "",
     },
     notes: doc.notes || "",
+    statusHistory: serializeStatusHistory(doc),
     createdAt: doc.created_at,
     updatedAt: doc.updated_at,
+  };
+}
+
+function serializeStatusHistory(doc) {
+  const history = Array.isArray(doc.status_history) ? doc.status_history : [];
+
+  if (history.length === 0) {
+    return [
+      {
+        status: doc.status,
+        note: "",
+        changedAt: doc.created_at,
+      },
+    ];
+  }
+
+  return history
+    .filter((entry) => entry.status)
+    .map((entry) => ({
+      status: entry.status,
+      note: entry.note || "",
+      changedAt: entry.changed_at || doc.created_at,
+    }));
+}
+
+export function serializeAdminOrder(doc, customer = null) {
+  return {
+    ...serializeOrder(doc),
+    customer: customer
+      ? {
+          id: String(customer._id ?? customer.id ?? ""),
+          name: customer.name || "",
+          email: customer.email || "",
+          phone: customer.phone || "",
+        }
+      : null,
   };
 }
 
@@ -230,6 +267,13 @@ export async function createOrder(userId, data) {
       postal_code: address.postalCode,
     },
     notes: data.notes || "",
+    status_history: [
+      {
+        status: "Placed",
+        note: "Order placed",
+        changed_at: now,
+      },
+    ],
     created_at: now,
     updated_at: now,
   };
@@ -261,17 +305,183 @@ export async function listOrders(userId) {
   return docs.map(serializeOrder);
 }
 
-export async function getOrder(userId, idOrNumber) {
-  const user_id = toUserId(userId);
+async function findOrderDocument(idOrNumber, user_id = null) {
   const objectId = toObjectId(idOrNumber);
-
   const filter = objectId
-    ? { _id: objectId, user_id }
-    : { order_number: idOrNumber, user_id };
+    ? { _id: objectId }
+    : { order_number: idOrNumber };
+
+  if (user_id) filter.user_id = user_id;
 
   const order = await orders().findOne(filter);
 
   if (!order) throw new ApiError(404, "Order not found.");
 
-  return serializeOrder(order);
+  return order;
+}
+
+export async function getOrder(userId, idOrNumber) {
+  const user_id = toUserId(userId);
+  return serializeOrder(await findOrderDocument(idOrNumber, user_id));
+}
+
+async function loadCustomerMap(userIds) {
+  const ids = [...new Set(userIds.filter(Boolean).map(String))];
+  if (ids.length === 0) return new Map();
+
+  const objectIds = ids.map(toObjectId).filter(Boolean);
+  const conditions = [{ id: { $in: ids } }];
+  if (objectIds.length > 0) conditions.push({ _id: { $in: objectIds } });
+
+  const users = await db
+    .collection("user")
+    .find({ $or: conditions })
+    .toArray();
+
+  const map = new Map();
+
+  for (const user of users) {
+    map.set(String(user._id), user);
+    if (user.id) map.set(String(user.id), user);
+  }
+
+  return map;
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export async function listAdminOrders({
+  status,
+  paymentStatus,
+  deliveryStatus,
+  search,
+  userId,
+  dateFrom,
+  dateTo,
+  page = 1,
+  limit = 20,
+} = {}) {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+  const filter = {};
+
+  if (status) filter.status = status;
+  if (paymentStatus) filter.payment_status = paymentStatus;
+  if (deliveryStatus) filter.delivery_status = deliveryStatus;
+
+  if (userId) {
+    const objectId = toObjectId(userId);
+    if (!objectId) throw new ApiError(400, "Invalid user id.");
+    filter.user_id = objectId;
+  }
+
+  if (dateFrom || dateTo) {
+    filter.created_at = {};
+    if (dateFrom) filter.created_at.$gte = dateFrom;
+    if (dateTo) filter.created_at.$lte = dateTo;
+  }
+
+  const term = typeof search === "string" ? search.trim() : "";
+  if (term) {
+    const pattern = new RegExp(escapeRegex(term), "i");
+    filter.$or = [
+      { order_number: pattern },
+      { "address.name": pattern },
+      { "address.phone": pattern },
+    ];
+  }
+
+  const [docs, total] = await Promise.all([
+    orders()
+      .find(filter)
+      .sort({ created_at: -1 })
+      .skip((safePage - 1) * safeLimit)
+      .limit(safeLimit)
+      .toArray(),
+    orders().countDocuments(filter),
+  ]);
+
+  const customerMap = await loadCustomerMap(docs.map((doc) => doc.user_id));
+
+  return {
+    orders: docs.map((doc) =>
+      serializeAdminOrder(doc, customerMap.get(String(doc.user_id)))
+    ),
+    total,
+    page: safePage,
+    limit: safeLimit,
+    pages: Math.max(1, Math.ceil(total / safeLimit)),
+  };
+}
+
+export async function getAdminOrder(idOrNumber) {
+  const order = await findOrderDocument(idOrNumber);
+  const customerMap = await loadCustomerMap([order.user_id]);
+
+  return serializeAdminOrder(order, customerMap.get(String(order.user_id)));
+}
+
+export async function updateAdminOrder(idOrNumber, data, adminUserId) {
+  const order = await findOrderDocument(idOrNumber);
+  const now = new Date();
+  const update = { updated_at: now };
+  let nextStatus = null;
+  let historyNote = data.note || "";
+
+  if (data.status && data.status !== order.status) {
+    nextStatus = data.status;
+  } else if (
+    data.paymentStatus === "paid" &&
+    order.payment_status !== "paid" &&
+    order.status === "Placed"
+  ) {
+    // Paying for a fresh order moves it to the next tracking step.
+    nextStatus = "Payment Confirmed";
+    if (!historyNote) historyNote = "Payment confirmed";
+  }
+
+  if (nextStatus) {
+    update.status = nextStatus;
+
+    if (!data.deliveryStatus) {
+      if (["Shipped", "Delivered", "Cancelled"].includes(nextStatus)) {
+        update.delivery_status = nextStatus;
+      } else if (nextStatus === "Processing") {
+        update.delivery_status = "Processing";
+      }
+    }
+  }
+
+  if (
+    data.paymentStatus &&
+    data.paymentStatus !== order.payment_status
+  ) {
+    update.payment_status = data.paymentStatus;
+  }
+
+  if (
+    data.deliveryStatus &&
+    data.deliveryStatus !== order.delivery_status
+  ) {
+    update.delivery_status = data.deliveryStatus;
+  }
+
+  const operations = { $set: update };
+
+  if (nextStatus) {
+    operations.$push = {
+      status_history: {
+        status: nextStatus,
+        note: historyNote,
+        changed_by: toObjectId(adminUserId),
+        changed_at: now,
+      },
+    };
+  }
+
+  await orders().updateOne({ _id: order._id }, operations);
+
+  return getAdminOrder(String(order._id));
 }

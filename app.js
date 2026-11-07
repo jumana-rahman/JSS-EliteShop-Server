@@ -12,6 +12,7 @@ import wishlistRouter from "./routes/wishlist.js";
 import addressesRouter from "./routes/addresses.js";
 import ordersRouter from "./routes/orders.js";
 import adminRouter from "./routes/admin.js";
+import adminOrdersRouter from "./routes/adminOrders.js";
 import uploadsRouter from "./routes/uploads.js";
 
 const app = express();
@@ -51,6 +52,7 @@ app.use("/api/cart", cartRouter);
 app.use("/api/wishlist", wishlistRouter);
 app.use("/api/addresses", addressesRouter);
 app.use("/api/orders", ordersRouter);
+app.use("/api/admin/orders", adminOrdersRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/uploads", uploadsRouter);
 

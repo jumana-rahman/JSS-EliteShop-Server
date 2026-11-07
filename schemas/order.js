@@ -30,6 +30,25 @@ const addressInput = z.object({
     .max(20, "Postal code is too long."),
 });
 
+export const ORDER_STATUSES = [
+  "Placed",
+  "Payment Confirmed",
+  "Processing",
+  "Shipped",
+  "Delivered",
+  "Cancelled",
+];
+
+export const PAYMENT_STATUSES = ["unpaid", "paid", "refunded"];
+
+export const DELIVERY_STATUSES = [
+  "Pending",
+  "Processing",
+  "Shipped",
+  "Delivered",
+  "Cancelled",
+];
+
 export const orderCreateSchema = z
   .object({
     addressId: objectId.optional(),
@@ -41,3 +60,15 @@ export const orderCreateSchema = z
     message: "A delivery address is required.",
     path: ["address"],
   });
+
+export const orderUpdateSchema = z
+  .object({
+    status: z.enum(ORDER_STATUSES).optional(),
+    paymentStatus: z.enum(PAYMENT_STATUSES).optional(),
+    deliveryStatus: z.enum(DELIVERY_STATUSES).optional(),
+    note: z.string().trim().max(300, "Note is too long.").optional().default(""),
+  })
+  .refine(
+    (data) => data.status || data.paymentStatus || data.deliveryStatus,
+    { message: "Choose at least one field to update." }
+  );

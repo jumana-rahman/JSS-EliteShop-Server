@@ -4,6 +4,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { validate } from "../middleware/validate.js";
 import { orderCreateSchema } from "../schemas/order.js";
 import * as orderModel from "../models/order.js";
+import { generateInvoicePdf } from "../lib/invoice.js";
 
 const router = Router();
 
@@ -23,6 +24,22 @@ router.post(
   asyncHandler(async (req, res) => {
     const order = await orderModel.createOrder(req.user.id, req.body);
     res.status(201).json({ order, message: "Order placed." });
+  })
+);
+
+router.get(
+  "/:idOrNumber/invoice",
+  asyncHandler(async (req, res) => {
+    const order = await orderModel.getOrder(req.user.id, req.params.idOrNumber);
+    const pdf = await generateInvoicePdf(order);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="invoice-${order.orderNumber}.pdf"`
+    );
+    res.setHeader("Content-Length", pdf.length);
+    res.end(pdf);
   })
 );
 
