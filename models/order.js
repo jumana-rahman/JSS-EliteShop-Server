@@ -4,13 +4,17 @@ import { ApiError } from "../utils/ApiError.js";
 import { toObjectId } from "../utils/objectId.js";
 import { createAddress, getAddressSnapshot } from "./address.js";
 import { PLACEHOLDER_IMAGE } from "./product.js";
+import { computePricing, roundMoney } from "../lib/pricing.js";
+import {
+  claimCoupon,
+  recordCouponUsage,
+  releaseCouponForOrder,
+  resolveCouponForUser,
+} from "./coupon.js";
 
 const orders = () => db.collection("orders");
 const carts = () => db.collection("carts");
 const products = () => db.collection("products");
-
-const SHIPPING_FEE = 9.99;
-const FREE_SHIPPING_THRESHOLD = 50;
 
 function toUserId(userId) {
   const objectId = toObjectId(userId);
@@ -37,6 +41,7 @@ export function serializeOrder(doc) {
     subtotal: doc.subtotal,
     shipping: doc.shipping,
     discount: doc.discount ?? 0,
+    couponCode: doc.coupon_code || "",
     total: doc.total,
     address: {
       name: doc.address?.name || "",
@@ -192,6 +197,15 @@ export async function createOrder(userId, data) {
     });
   }
 
+  const subtotal = roundMoney(
+    orderItems.reduce((sum, item) => sum + item.total_price, 0)
+  );
+  const couponCode = String(data.couponCode || "").trim();
+  const coupon = couponCode
+    ? await resolveCouponForUser(user_id, couponCode, subtotal)
+    : null;
+  const { shipping, discount, total } = computePricing(subtotal, coupon);
+
   for (const item of orderItems) {
     const result = await products().updateOne(
       { _id: item.product_id, stock: { $gte: item.quantity } },
@@ -236,13 +250,17 @@ export async function createOrder(userId, data) {
     throw error;
   }
 
-  const subtotal = orderItems.reduce(
-    (sum, item) => sum + item.total_price,
-    0
-  );
-  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
-  const discount = 0;
-  const total = subtotal + shipping - discount;
+  let claimedCoupon = false;
+
+  if (coupon) {
+    try {
+      await claimCoupon(coupon);
+      claimedCoupon = true;
+    } catch (error) {
+      await rollbackStock(decremented);
+      throw error;
+    }
+  }
 
   const now = new Date();
   const orderNumber = await generateOrderNumber();
@@ -258,6 +276,8 @@ export async function createOrder(userId, data) {
     subtotal,
     shipping,
     discount,
+    coupon_id: coupon?._id || null,
+    coupon_code: coupon?.code || "",
     total,
     address: {
       name: address.name,
@@ -284,7 +304,18 @@ export async function createOrder(userId, data) {
     inserted = await orders().insertOne(doc);
   } catch (error) {
     await rollbackStock(decremented);
+
+    if (claimedCoupon && coupon) {
+      await releaseCouponForOrder(coupon._id, null).catch(() => {});
+    }
+
     throw error;
+  }
+
+  if (coupon) {
+    await recordCouponUsage(coupon._id, user_id, inserted.insertedId).catch(
+      () => {}
+    );
   }
 
   await carts().updateOne(
@@ -482,6 +513,23 @@ export async function updateAdminOrder(idOrNumber, data, adminUserId) {
   }
 
   await orders().updateOne({ _id: order._id }, operations);
+
+  if (nextStatus === "Cancelled" && order.status !== "Cancelled") {
+    await Promise.all(
+      (order.items || []).map((item) =>
+        products()
+          .updateOne(
+            { _id: item.product_id },
+            { $inc: { stock: item.quantity, sold_count: -item.quantity } }
+          )
+          .catch(() => {})
+      )
+    );
+
+    if (order.coupon_id) {
+      await releaseCouponForOrder(order.coupon_id, order._id).catch(() => {});
+    }
+  }
 
   return getAdminOrder(String(order._id));
 }

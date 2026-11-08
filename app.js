@@ -19,6 +19,8 @@ import contactRouter from "./routes/contact.js";
 import adminContactRouter from "./routes/adminContact.js";
 import adminUsersRouter from "./routes/adminUsers.js";
 import aiRouter from "./routes/ai.js";
+import couponsRouter from "./routes/coupons.js";
+import adminCouponsRouter from "./routes/adminCoupons.js";
 import uploadsRouter from "./routes/uploads.js";
 
 const app = express();
@@ -61,10 +63,12 @@ app.use("/api/orders", ordersRouter);
 app.use("/api/reviews", reviewsRouter);
 app.use("/api/contact", contactRouter);
 app.use("/api/ai", aiRouter);
+app.use("/api/coupons", couponsRouter);
 app.use("/api/admin/orders", adminOrdersRouter);
 app.use("/api/admin/reviews", adminReviewsRouter);
 app.use("/api/admin/users", adminUsersRouter);
 app.use("/api/admin/contact", adminContactRouter);
+app.use("/api/admin/coupons", adminCouponsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/uploads", uploadsRouter);
 

@@ -55,6 +55,12 @@ export const orderCreateSchema = z
     address: addressInput.optional(),
     saveAddress: z.boolean().optional().default(false),
     notes: z.string().trim().max(500, "Notes are too long.").optional().default(""),
+    couponCode: z
+      .string()
+      .trim()
+      .max(40, "Coupon code is too long.")
+      .optional()
+      .default(""),
   })
   .refine((data) => data.addressId || data.address, {
     message: "A delivery address is required.",
