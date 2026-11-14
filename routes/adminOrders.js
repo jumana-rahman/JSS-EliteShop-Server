@@ -4,6 +4,7 @@ import { requireAdmin } from "../middleware/requireAdmin.js";
 import { validate } from "../middleware/validate.js";
 import { orderUpdateSchema } from "../schemas/order.js";
 import * as orderModel from "../models/order.js";
+import { generateInvoicePdf } from "../lib/invoice.js";
 
 const router = Router();
 
@@ -45,6 +46,22 @@ router.get(
     });
 
     res.json(result);
+  })
+);
+
+router.get(
+  "/:idOrNumber/invoice",
+  asyncHandler(async (req, res) => {
+    const order = await orderModel.getAdminOrder(req.params.idOrNumber);
+    const pdf = await generateInvoicePdf(order);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="invoice-${order.orderNumber}.pdf"`
+    );
+    res.setHeader("Content-Length", pdf.length);
+    res.end(pdf);
   })
 );
 
