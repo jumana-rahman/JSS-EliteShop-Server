@@ -4,6 +4,9 @@
   "description": "JSS EliteShop",
   "main": "server.js",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
